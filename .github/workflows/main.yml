@@ -1,4 +1,4 @@
-name: Build and test
+name: Build
 
 on:
   pull_request:
@@ -10,10 +10,12 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-latest
           - ubuntu-latest
         ocaml-compiler:
+          - 4.11.x
+          - 4.12.x
           - 4.13.x
+          - 4.14.x
 
     runs-on: ${{ matrix.os }}
 
@@ -29,5 +31,3 @@ jobs:
       - run: opam install . --deps-only --with-test
 
       - run: opam exec -- dune build
-
-      - run: opam exec -- dune runtest
