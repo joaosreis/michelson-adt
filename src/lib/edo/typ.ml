@@ -129,3 +129,44 @@ let rec t'_to_string = function
 and to_string (t, _) = t'_to_string t
 
 let has_annot a t = List.mem (snd t) a ~equal:Common_adt.Annot.equal
+
+let rec are_compatible (t_1, _) (t_2, _) =
+  match (t_1, t_2) with
+  | Int, Int -> true
+  | Nat, Nat -> true
+  | String, String -> true
+  | Bytes, Bytes -> true
+  | Mutez, Mutez -> true
+  | Bool, Bool -> true
+  | Key_hash, Key_hash -> true
+  | Timestamp, Timestamp -> true
+  | Address, Address -> true
+  | Key, Key -> true
+  | Unit, Unit -> true
+  | Signature, Signature -> true
+  | Option t_1, Option t_2 -> are_compatible t_1 t_2
+  | List t_1, List t_2 -> are_compatible t_1 t_2
+  | Set t_1, Set t_2 -> are_compatible t_1 t_2
+  | Operation, Operation -> true
+  | Contract t_1, Contract t_2 -> are_compatible t_1 t_2
+  | Pair (t_1_1, t_1_2), Pair (t_2_1, t_2_2) ->
+      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+  | Or (t_1_1, t_1_2), Or (t_2_1, t_2_2) ->
+      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+  | Lambda (t_1_1, t_1_2), Lambda (t_2_1, t_2_2) ->
+      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+  | Map (t_1_1, t_1_2), Map (t_2_1, t_2_2) ->
+      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+  | Big_map (t_1_1, t_1_2), Big_map (t_2_1, t_2_2) ->
+      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+  | Chain_id, Chain_id -> true
+  | Never, Never -> true
+  | Bls12_381_g1, Bls12_381_g1 -> true
+  | Bls12_381_g2, Bls12_381_g2 -> true
+  | Bls12_381_fr, Bls12_381_fr -> true
+  | Ticket t_1, Ticket t_2 -> are_compatible t_1 t_2
+  | Sapling_transaction n_1, Sapling_transaction n_2 -> Bigint.equal n_1 n_2
+  | Sapling_state n_1, Sapling_state n_2 -> Bigint.equal n_1 n_2
+  | Chest, Chest -> true
+  | Chest_key, Chest_key -> true
+  | _ -> false

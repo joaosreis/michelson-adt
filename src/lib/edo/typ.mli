@@ -45,3 +45,4 @@ val is_contract_type_compatible : t -> t -> bool
 val t'_to_string : t' -> string
 val to_string : t -> string
 val has_annot : Common_adt.Annot.t -> t -> bool
+val are_compatible : t -> t -> bool
