@@ -1,13 +1,15 @@
 # Michelson ADT
 
-An OCaml library with and ADT representation of Michelson smart contracts syntax.
+![main workflow](https://github.com/joaosreis/michelson-adt/actions/workflows/main.yml/badge.svg)
+
+An OCaml library with an ADT representation of Michelson smart contracts syntax.
 
 ## Install instructions
 
 ### Using dune
 
 ```bash
-git clone https://github.com/releaselab/michelson-adt.git
+git clone https://github.com/joaosreis/michelson-adt.git
 cd michelson-adt
 dune build @install
 dune install
@@ -16,7 +18,7 @@ dune install
 ### Using opam
 
 ```bash
-opam pin add michelson https://github.com/releaselab/michelson-adt.git
+opam install https://github.com/joaosreis/michelson-adt.git
 ```
 
 ---

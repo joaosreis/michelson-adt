@@ -5,17 +5,17 @@
 (generate_opam_files true)
 
 (source
- (uri "git+https://github.com/releaselab/michelson-adt.git"))
+ (uri "git+https://github.com/joaosreis/michelson-adt.git"))
 
-(bug_reports "https://github.com/releaselab/michelson-adt/issues")
+(bug_reports "https://github.com/joaosreis/michelson-adt/issues")
 
-(homepage "https://github.com/releaselab/michelson-adt")
+(homepage "https://github.com/joaosreis/michelson-adt")
 
 (license MIT)
 
-(authors "Jo\195\163o Santos Reis <joao.reis@ubi.pt>")
+(authors "Jo\195\163o Santos Reis <joaosreis@outlook.pt>")
 
-(maintainers "Jo\195\163o Santos Reis <joao.reis@ubi.pt>")
+(maintainers "Jo\195\163o Santos Reis <joaosreis@outlook.pt>")
 
 (package
  (name michelson-adt)
@@ -26,10 +26,6 @@
   (dune :build)
   (core
    (>= v0.15))
-  (core_unix
-   (and
-    :with-test
-    (>= v0.15)))
   bignum
   (tezos-micheline
    (>= 7.0))
