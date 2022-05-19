@@ -26,7 +26,7 @@ let inst_t_typed =
 
 let typ =
   let open Typ in
-  Alcotest.testable (fun fmt t -> Sexp.pp fmt (sexp_of_t t)) ( = )
+  Alcotest.testable (fun fmt t -> Sexp.pp fmt (sexp_of_t t)) are_compatible
 
 let dummy_loc = Common_adt.Loc.dummy_loc
 let create_adt_typ t = Typed_adt.Typ.create 0 t

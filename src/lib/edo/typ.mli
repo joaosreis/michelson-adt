@@ -36,7 +36,6 @@ type t' =
 
 and t = t' * Common_adt.Annot.t list
 
-include Comparable.S with type t := t
 include Sexpable.S with type t := t
 
 val is_comparable_type : t -> bool

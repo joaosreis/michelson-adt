@@ -413,7 +413,7 @@ let type_lsr loc stack =
 
 let type_compare loc stack =
   match (pop stack, pop stack) with
-  | Some t_1, Some t_2 when t_1 = t_2 ->
+  | Some t_1, Some t_2 when are_compatible t_1 t_2 ->
       if not (is_comparable_type t_1) then
         raise
           (Type_error (loc, "COMPARE: type not comparable " ^ to_string t_1))
@@ -516,13 +516,13 @@ let type_cdr loc stack =
 
 let type_mem loc stack =
   match (pop stack, pop stack) with
-  | Some t, Some (Set t', _) when t = t' ->
+  | Some t, Some (Set t', _) when are_compatible t t' ->
       push stack (ct Bool);
       I_mem_set
-  | Some t, Some (Map (t', _), _) when t = t' ->
+  | Some t, Some (Map (t', _), _) when are_compatible t t' ->
       push stack (ct Bool);
       I_mem_map
-  | Some t, Some (Big_map (t', _), _) when t = t' ->
+  | Some t, Some (Big_map (t', _), _) when are_compatible t t' ->
       push stack (ct Bool);
       I_mem_big_map
   | Some t_1, Some t_2 -> raise_invalid_tl loc "MEM" [ t_1; t_2 ]
@@ -534,15 +534,15 @@ let type_mem loc stack =
 
 let type_update loc stack =
   match (pop stack, pop stack, pop stack) with
-  | Some t, Some (Bool, _), Some (Set t', _) when t = t' ->
+  | Some t, Some (Bool, _), Some (Set t', _) when are_compatible t t' ->
       push stack (ct (Set t'));
       I_update_set
   | Some t, Some (Option t_2, _), Some (Map (t', t_2'), _)
-    when t = t' && t_2 = t_2' ->
+    when are_compatible t t' && are_compatible t_2 t_2' ->
       push stack (ct (Map (t', t_2')));
       I_update_map
   | Some t, Some (Option t_2, _), Some (Big_map (t', t_2'), _)
-    when t = t' && t_2 = t_2' ->
+    when are_compatible t t' && are_compatible t_2 t_2' ->
       push stack (ct (Big_map (t', t_2')));
       I_update_map
   | Some t_1, Some t_2, Some t_3 ->
@@ -554,10 +554,10 @@ let type_update loc stack =
 
 let type_get loc stack =
   match (pop stack, pop stack) with
-  | Some t_1', Some (Map (t_1, t_2), _) when t_1 = t_1' ->
+  | Some t_1', Some (Map (t_1, t_2), _) when are_compatible t_1 t_1' ->
       push stack (ct (Option t_2));
       I_get_map
-  | Some t_1', Some (Big_map (t_1, t_2), _) when t_1 = t_1' ->
+  | Some t_1', Some (Big_map (t_1, t_2), _) when are_compatible t_1 t_1' ->
       push stack (ct (Option t_2));
       I_get_big_map
   | Some t_1, Some t_2 -> raise_invalid_tl loc "GET" [ t_1; t_2 ]
@@ -582,7 +582,7 @@ let type_none _loc stack t =
 
 let type_cons loc stack =
   match (pop stack, pop stack) with
-  | Some t', Some (List t, _) when t = t' ->
+  | Some t', Some (List t, _) when are_compatible t t' ->
       push stack (ct (List t'));
       I_cons
   | Some t_1, Some t_2 -> raise_invalid_tl loc "CONS" [ t_1; t_2 ]
@@ -869,7 +869,7 @@ let type_split_ticket loc stack =
 
 let type_join_tickets loc stack =
   match pop stack with
-  | Some (Pair ((Ticket t, _), (Ticket t', _)), _) when t = t' ->
+  | Some (Pair ((Ticket t, _), (Ticket t', _)), _) when are_compatible t t' ->
       push stack (ct (Option (ct (Ticket t))));
       I_join_tickets
   | Some t -> raise_invalid_t loc "JOIN_TICKETS" t
@@ -901,12 +901,13 @@ let type_open_chest loc stack =
 
 let type_get_and_update loc stack =
   match (pop stack, pop stack, pop stack) with
-  | Some k, Some (Option v, _), Some (Map (k', v'), _) when k = k' && v = v' ->
+  | Some k, Some (Option v, _), Some (Map (k', v'), _)
+    when are_compatible k k' && are_compatible v v' ->
       push stack (ct (Map (k, v)));
       push stack (ct (Option v));
       I_get_and_update_map
-  | Some k, Some (Option v, _), Some (Big_map (k', v'), _) when k = k' && v = v'
-    ->
+  | Some k, Some (Option v, _), Some (Big_map (k', v'), _)
+    when are_compatible k k' && are_compatible v v' ->
       push stack (ct (Big_map (k, v)));
       push stack (ct (Option v));
       I_get_and_update_big_map
@@ -944,7 +945,7 @@ let type_empty_big_map _loc stack k v =
 let type_create_contract loc stack p =
   match (pop stack, pop stack, pop stack) with
   | Some (Option (Key_hash, _), _), Some (Mutez, _), Some g
-    when stack_typ_of_typ p.storage = g ->
+    when are_compatible (stack_typ_of_typ p.storage) g ->
       push stack (ct Address);
       push stack (ct Operation);
       I_create_contract p
@@ -980,7 +981,7 @@ let type_unpack loc stack t =
 let type_cast loc stack t =
   let t'' = stack_typ_of_typ t in
   match pop stack with
-  | Some t' when t' = t'' ->
+  | Some t' when are_compatible t' t'' ->
       push stack t'';
       I_cast t
   | Some t -> raise_invalid_t loc "CAST" t
@@ -1008,7 +1009,7 @@ let type_create_account loc stack =
 
 let type_exec loc stack =
   match (pop stack, pop stack) with
-  | Some a, Some (Lambda (a', b), _) when a = a' ->
+  | Some a, Some (Lambda (a', b), _) when are_compatible a a' ->
       push stack b;
       I_exec
   | Some t_1, Some t_2 -> raise_invalid_tl loc "EXEC" [ t_1; t_2 ]
@@ -1018,7 +1019,7 @@ let type_exec loc stack =
 
 let type_apply loc stack =
   match (pop stack, pop stack) with
-  | Some a, Some (Lambda ((Pair (a', b), _), c), _) when a = a' ->
+  | Some a, Some (Lambda ((Pair (a', b), _), c), _) when are_compatible a a' ->
       push stack (ct (Lambda (b, c)));
       I_apply
   | Some t_1, Some t_2 -> raise_invalid_tl loc "APPLY" [ t_1; t_2 ]
@@ -1292,7 +1293,7 @@ and type_if loc p stack i_t i_f =
       else
         let l_s_t = Stack.to_list s_t in
         let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:( = ) with
+        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
         | List.Or_unequal_lengths.Ok b when b ->
             copy_stack ();
             i
@@ -1327,7 +1328,7 @@ and type_if_none loc p stack i_t i_f =
       else
         let l_s_t = Stack.to_list s_t in
         let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:( = ) with
+        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
         | List.Or_unequal_lengths.Ok b when b ->
             copy_stack ();
             i
@@ -1363,7 +1364,7 @@ and type_if_left loc p stack i_t i_f =
       else
         let l_s_t = Stack.to_list s_t in
         let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:( = ) with
+        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
         | List.Or_unequal_lengths.Ok b when b ->
             copy_stack ();
             i
@@ -1399,7 +1400,7 @@ and type_if_cons loc p stack i_t i_f =
       else
         let l_s_t = Stack.to_list s_t in
         let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:( = ) with
+        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
         | List.Or_unequal_lengths.Ok b when b ->
             copy_stack ();
             i
@@ -1419,7 +1420,7 @@ and type_loop loc p stack b =
         | Some (Bool, _) -> (
             let l_stack = Stack.to_list stack in
             let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:( = ) with
+            match List.for_all2 l_stack l_s ~f:are_compatible with
             | List.Or_unequal_lengths.Ok c when c -> i
             | _ -> raise_body_type_mismatch loc "LOOP")
         | Some t -> raise_invalid_t loc "LOOP" t
@@ -1437,10 +1438,11 @@ and type_loop_left loc p stack b =
       if failed then i
       else
         match pop s with
-        | Some (Or (l', r'), _) when l = l' && r = r' -> (
+        | Some (Or (l', r'), _) when are_compatible l l' && are_compatible r r'
+          -> (
             let l_stack = Stack.to_list stack in
             let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:( = ) with
+            match List.for_all2 l_stack l_s ~f:are_compatible with
             | List.Or_unequal_lengths.Ok c when c ->
                 push stack r;
                 i
@@ -1461,7 +1463,7 @@ and type_iter loc p stack b =
       else
         let l_stack = Stack.to_list stack in
         let l_s = Stack.to_list s in
-        match List.for_all2 l_stack l_s ~f:( = ) with
+        match List.for_all2 l_stack l_s ~f:are_compatible with
         | List.Or_unequal_lengths.Ok c when c -> i
         | _ -> raise_body_type_mismatch loc "ITER")
   | Some (Map (k, v), _) -> (
@@ -1473,7 +1475,7 @@ and type_iter loc p stack b =
       else
         let l_stack = Stack.to_list stack in
         let l_s = Stack.to_list s in
-        match List.for_all2 l_stack l_s ~f:( = ) with
+        match List.for_all2 l_stack l_s ~f:are_compatible with
         | List.Or_unequal_lengths.Ok c when c -> i
         | _ -> raise_body_type_mismatch loc "ITER")
   | Some (List t, _) -> (
@@ -1485,7 +1487,7 @@ and type_iter loc p stack b =
       else
         let l_stack = Stack.to_list stack in
         let l_s = Stack.to_list s in
-        match List.for_all2 l_stack l_s ~f:( = ) with
+        match List.for_all2 l_stack l_s ~f:are_compatible with
         | List.Or_unequal_lengths.Ok c when c -> i
         | _ -> raise_body_type_mismatch loc "ITER")
   | Some t -> raise_invalid_t loc "ITER" t
@@ -1504,7 +1506,7 @@ and type_map loc p stack b =
         | Some t -> (
             let l_stack = Stack.to_list stack in
             let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:( = ) with
+            match List.for_all2 l_stack l_s ~f:are_compatible with
             | List.Or_unequal_lengths.Ok c when c ->
                 push stack (ct (List t));
                 i
@@ -1521,7 +1523,7 @@ and type_map loc p stack b =
         | Some t -> (
             let l_stack = Stack.to_list stack in
             let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:( = ) with
+            match List.for_all2 l_stack l_s ~f:are_compatible with
             | List.Or_unequal_lengths.Ok c when c ->
                 push stack (ct (Map (k, t)));
                 i
@@ -1541,7 +1543,7 @@ and type_lambda loc stack p r b =
   if failed then i
   else
     match pop s with
-    | Some r'' when r' = r'' && Stack.is_empty s -> i
+    | Some r'' when are_compatible r' r'' && Stack.is_empty s -> i
     | Some t -> raise_invalid_t loc "LAMBDA" t
     | None -> raise_invalid_stack_size loc "LAMBDA"
 
