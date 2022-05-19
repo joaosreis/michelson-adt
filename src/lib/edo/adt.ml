@@ -181,6 +181,41 @@ module Typ = struct
 
   let has_annot a t =
     List.mem (snd t.Common_adt.Node.value) a ~equal:Common_adt.Annot.equal
+
+  let rec to_string t =
+    match fst t.Common_adt.Node.value with
+    | T_address -> "address"
+    | T_big_map (t1, t2) -> "big_map " ^ to_string t1 ^ " " ^ to_string t2
+    | T_bool -> "bool"
+    | T_bytes -> "bytes"
+    | T_contract t -> "contract " ^ to_string t
+    | T_nat -> "nat"
+    | T_int -> "int"
+    | T_list t -> "list " ^ to_string t
+    | T_map (t1, t2) -> "map " ^ to_string t1 ^ " " ^ to_string t2
+    | T_or (t1, t2) -> "or " ^ to_string t1 ^ " " ^ to_string t2
+    | T_pair (t1, t2) -> "pair " ^ to_string t1 ^ " " ^ to_string t2
+    | T_string -> "string"
+    | T_unit -> "unit"
+    | T_bls12_381_fr -> "bls12_381_fr"
+    | T_sapling_state n -> "sapling_state " ^ Bigint.to_string n
+    | T_never -> "never"
+    | T_chain_id -> "chain_id"
+    | T_mutez -> "mutez"
+    | T_key_hash -> "key_hash"
+    | T_key -> "key"
+    | T_timestamp -> "timestamp"
+    | T_signature -> "signature"
+    | T_operation -> "operation"
+    | T_bls12_381_g1 -> "bls12_381_g1"
+    | T_bls12_381_g2 -> "bls12_381_g2"
+    | T_chest -> "chest"
+    | T_chest_key -> "chest_key"
+    | T_option t -> "option " ^ to_string t
+    | T_set t -> "set " ^ to_string t
+    | T_ticket t -> "ticket " ^ to_string t
+    | T_lambda (t_1, t_2) -> "lambda " ^ to_string t_1 ^ " " ^ to_string t_2
+    | T_sapling_transaction n -> "sapling_transaction " ^ Bigint.to_string n
 end
 
 module Data = struct

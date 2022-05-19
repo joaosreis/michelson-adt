@@ -90,18 +90,18 @@ let rec is_contract_type_compatible contract_t t =
   | _ -> false
 
 let rec t'_to_string = function
-  | Int -> sprintf "int"
-  | Nat -> sprintf "nat"
-  | String -> sprintf "string"
-  | Bytes -> sprintf "bytes"
-  | Mutez -> sprintf "mutez"
-  | Bool -> sprintf "bool"
-  | Key_hash -> sprintf "key_hash"
-  | Timestamp -> sprintf "timestamp"
-  | Address -> sprintf "address"
-  | Key -> sprintf "key"
-  | Unit -> sprintf "unit"
-  | Signature -> sprintf "signature"
+  | Int -> "int"
+  | Nat -> "nat"
+  | String -> "string"
+  | Bytes -> "bytes"
+  | Mutez -> "mutez"
+  | Bool -> "bool"
+  | Key_hash -> "key_hash"
+  | Timestamp -> "timestamp"
+  | Address -> "address"
+  | Key -> "key"
+  | Unit -> "unit"
+  | Signature -> "signature"
   | Option t -> sprintf "(option %s)" (to_string t)
   | List t -> sprintf "(list %s)" (to_string t)
   | Set t -> sprintf "(set %s)" (to_string t)
@@ -114,59 +114,67 @@ let rec t'_to_string = function
   | Map (t_1, t_2) -> sprintf "(map %s %s)" (to_string t_1) (to_string t_2)
   | Big_map (t_1, t_2) ->
       sprintf "(big_map %s %s)" (to_string t_1) (to_string t_2)
-  | Chain_id -> sprintf "chain_id"
-  | Never -> sprintf "never"
-  | Bls12_381_g1 -> sprintf "bls12_381_g1"
-  | Bls12_381_g2 -> sprintf "bls12_381_g2"
-  | Bls12_381_fr -> sprintf "bls12_381_fr"
+  | Chain_id -> "chain_id"
+  | Never -> "never"
+  | Bls12_381_g1 -> "bls12_381_g1"
+  | Bls12_381_g2 -> "bls12_381_g2"
+  | Bls12_381_fr -> "bls12_381_fr"
   | Ticket t -> sprintf "ticket %s" (to_string t)
   | Sapling_transaction n ->
       sprintf "sapling_transaction %s" (Bigint.to_string n)
   | Sapling_state n -> sprintf "sapling_state %s" (Bigint.to_string n)
-  | Chest -> sprintf "chest"
-  | Chest_key -> sprintf "chest_key"
+  | Chest -> "chest"
+  | Chest_key -> "chest_key"
 
 and to_string (t, _) = t'_to_string t
 
 let has_annot a t = List.mem (snd t) a ~equal:Common_adt.Annot.equal
 
-let rec are_compatible (t_1, _) (t_2, _) =
-  match (t_1, t_2) with
-  | Int, Int -> true
-  | Nat, Nat -> true
-  | String, String -> true
-  | Bytes, Bytes -> true
-  | Mutez, Mutez -> true
-  | Bool, Bool -> true
-  | Key_hash, Key_hash -> true
-  | Timestamp, Timestamp -> true
-  | Address, Address -> true
-  | Key, Key -> true
-  | Unit, Unit -> true
-  | Signature, Signature -> true
-  | Option t_1, Option t_2 -> are_compatible t_1 t_2
-  | List t_1, List t_2 -> are_compatible t_1 t_2
-  | Set t_1, Set t_2 -> are_compatible t_1 t_2
-  | Operation, Operation -> true
-  | Contract t_1, Contract t_2 -> are_compatible t_1 t_2
-  | Pair (t_1_1, t_1_2), Pair (t_2_1, t_2_2) ->
-      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
-  | Or (t_1_1, t_1_2), Or (t_2_1, t_2_2) ->
-      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
-  | Lambda (t_1_1, t_1_2), Lambda (t_2_1, t_2_2) ->
-      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
-  | Map (t_1_1, t_1_2), Map (t_2_1, t_2_2) ->
-      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
-  | Big_map (t_1_1, t_1_2), Big_map (t_2_1, t_2_2) ->
-      are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
-  | Chain_id, Chain_id -> true
-  | Never, Never -> true
-  | Bls12_381_g1, Bls12_381_g1 -> true
-  | Bls12_381_g2, Bls12_381_g2 -> true
-  | Bls12_381_fr, Bls12_381_fr -> true
-  | Ticket t_1, Ticket t_2 -> are_compatible t_1 t_2
-  | Sapling_transaction n_1, Sapling_transaction n_2 -> Bigint.equal n_1 n_2
-  | Sapling_state n_1, Sapling_state n_2 -> Bigint.equal n_1 n_2
-  | Chest, Chest -> true
-  | Chest_key, Chest_key -> true
-  | _ -> false
+let get_type_annot a =
+  List.find_map a ~f:(function
+    | Common_adt.Annot.A_type a -> Some a
+    | _ -> None)
+
+let rec are_compatible (t_1, a_1) (t_2, a_2) =
+  match (get_type_annot a_1, get_type_annot a_2) with
+  | Some a_1, Some a_2 when not (String.equal a_1 a_2) -> false
+  | _ -> (
+      match (t_1, t_2) with
+      | Int, Int -> true
+      | Nat, Nat -> true
+      | String, String -> true
+      | Bytes, Bytes -> true
+      | Mutez, Mutez -> true
+      | Bool, Bool -> true
+      | Key_hash, Key_hash -> true
+      | Timestamp, Timestamp -> true
+      | Address, Address -> true
+      | Key, Key -> true
+      | Unit, Unit -> true
+      | Signature, Signature -> true
+      | Option t_1, Option t_2 -> are_compatible t_1 t_2
+      | List t_1, List t_2 -> are_compatible t_1 t_2
+      | Set t_1, Set t_2 -> are_compatible t_1 t_2
+      | Operation, Operation -> true
+      | Contract t_1, Contract t_2 -> are_compatible t_1 t_2
+      | Pair (t_1_1, t_1_2), Pair (t_2_1, t_2_2) ->
+          are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+      | Or (t_1_1, t_1_2), Or (t_2_1, t_2_2) ->
+          are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+      | Lambda (t_1_1, t_1_2), Lambda (t_2_1, t_2_2) ->
+          are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+      | Map (t_1_1, t_1_2), Map (t_2_1, t_2_2) ->
+          are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+      | Big_map (t_1_1, t_1_2), Big_map (t_2_1, t_2_2) ->
+          are_compatible t_1_1 t_2_1 && are_compatible t_1_2 t_2_2
+      | Chain_id, Chain_id -> true
+      | Never, Never -> true
+      | Bls12_381_g1, Bls12_381_g1 -> true
+      | Bls12_381_g2, Bls12_381_g2 -> true
+      | Bls12_381_fr, Bls12_381_fr -> true
+      | Ticket t_1, Ticket t_2 -> are_compatible t_1 t_2
+      | Sapling_transaction n_1, Sapling_transaction n_2 -> Bigint.equal n_1 n_2
+      | Sapling_state n_1, Sapling_state n_2 -> Bigint.equal n_1 n_2
+      | Chest, Chest -> true
+      | Chest_key, Chest_key -> true
+      | _ -> false)

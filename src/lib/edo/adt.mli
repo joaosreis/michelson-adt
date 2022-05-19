@@ -177,6 +177,7 @@ module Typ : sig
 
   val create : int -> ?location:Loc.t -> ?annots:annot list -> typ_t -> t
   val has_annot : Common_adt.Annot.t -> t -> bool
+  val to_string : t -> string
 end
 
 module Data : sig
