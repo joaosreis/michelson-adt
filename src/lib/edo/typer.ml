@@ -1118,21 +1118,21 @@ let type_dig loc stack n =
 
 let type_dug loc stack n =
   (if Bigint.(n = zero) then ()
-  else
-    match pop stack with
-    | Some top ->
-        let rec aux i x =
-          match pop stack with
-          | Some a ->
-              if Bigint.(i = one) then (
-                push stack top;
-                push stack a;
-                List.iter x ~f:(fun x -> push stack x))
-              else aux Bigint.(i - one) (a :: x)
-          | None -> raise_invalid_stack_size loc "DUG"
-        in
-        aux n []
-    | None -> raise_invalid_stack_size loc "DUG");
+   else
+     match pop stack with
+     | Some top ->
+         let rec aux i x =
+           match pop stack with
+           | Some a ->
+               if Bigint.(i = one) then (
+                 push stack top;
+                 push stack a;
+                 List.iter x ~f:(fun x -> push stack x))
+               else aux Bigint.(i - one) (a :: x)
+           | None -> raise_invalid_stack_size loc "DUG"
+         in
+         aux n []
+     | None -> raise_invalid_stack_size loc "DUG");
   I_dug n
 
 (* PAIR n *)
