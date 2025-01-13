@@ -10,7 +10,7 @@ homepage: "https://github.com/joaosreis/michelson-adt"
 bug-reports: "https://github.com/joaosreis/michelson-adt/issues"
 depends: [
   "dune" {>= "2.7" & build}
-  "core" {>= "v0.15"}
+  "core" {>= "v0.15" & < "v0.16"}
   "bignum"
   "tezos-micheline" {>= "7.0"}
   "ppx_deriving"

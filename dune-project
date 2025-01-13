@@ -25,7 +25,9 @@
  (depends
   (dune :build)
   (core
-   (>= v0.15))
+   (and
+    (>= v0.15)
+    (< v0.16)))
   bignum
   (tezos-micheline
    (>= 7.0))
