@@ -5,6 +5,7 @@
     nixpkgs.follows = "opam-nix/nixpkgs";
   };
   outputs = { self, flake-utils, opam-nix, nixpkgs }@inputs:
+    # Don't forget to put the package name instead of `throw':
     let package = "michelson-adt";
     in flake-utils.lib.eachDefaultSystem (system:
       let
@@ -24,27 +25,28 @@
           ## - or force ocamlfind to be a certain version:
           # ocamlfind = "1.9.2";
         };
-        scope = on.buildOpamProject { } package ./. query;
-        overlay = final: prev:
-          {
-            # Your overrides go here
-          };
+        scope = on.buildOpamProject' { } ./. query;
+        overlay = final: prev: {
+          # You can add overrides here
+          ${package} = prev.${package}.overrideAttrs (_: {
+            # Prevent the ocaml dependencies from leaking into dependent environments
+            doNixSupport = false;
+          });
+        };
         scope' = scope.overrideScope overlay;
         # The main package containing the executable
         main = scope'.${package};
         # Packages from devPackagesQuery
         devPackages = builtins.attrValues
           (pkgs.lib.getAttrs (builtins.attrNames devPackagesQuery) scope');
-      in
-      {
+      in {
         legacyPackages = scope';
 
-        packages.default = self.legacyPackages.${system}.${package};
+        packages.default = main;
 
         devShells.default = pkgs.mkShell {
           inputsFrom = [ main ];
           buildInputs = devPackages ++ [
-            pkgs.nixd
             # You can add packages from nixpkgs here
           ];
         };
