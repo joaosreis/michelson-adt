@@ -29,9 +29,7 @@
     (>= v0.15)
     (< v0.16)))
   bignum
-  (tezos-micheline
-   (>= 7.0))
+  tezos-micheline
   ppx_deriving
-  (pp_loc
-   (>= 2.0))
+  pp_loc
   (alcotest :with-test)))
