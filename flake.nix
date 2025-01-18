@@ -1,10 +1,18 @@
 {
   inputs = {
-    opam-nix.url = "github:tweag/opam-nix";
+    opam-nix = {
+      url = "github:tweag/opam-nix";
+      inputs.opam-repository.follows = "opam-repository";
+    };
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.follows = "opam-nix/nixpkgs";
+    opam-repository = {
+      url = "github:ocaml/opam-repository";
+      flake = false;
+    };
   };
-  outputs = { self, flake-utils, opam-nix, nixpkgs }@inputs:
+
+  outputs = { self, flake-utils, opam-nix, nixpkgs, opam-repository }@inputs:
     # Don't forget to put the package name instead of `throw':
     let package = "michelson-adt";
     in flake-utils.lib.eachDefaultSystem (system:
