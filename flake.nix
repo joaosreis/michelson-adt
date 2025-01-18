@@ -41,6 +41,10 @@
             # Prevent the ocaml dependencies from leaking into dependent environments
             doNixSupport = false;
           });
+          ocaml-lsp-server = prev.ocaml-lsp-server.overrideAttrs (_: {
+            nativeBuildInputs = prev.ocaml-lsp-server.nativeBuildInputs
+              ++ [ prev.cppo ];
+          });
         };
         scope' = scope.overrideScope overlay;
         # The main package containing the executable
