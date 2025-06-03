@@ -46,7 +46,10 @@ type t' =
   | Chest_key
 
 and t =
-  t' * (Common_adt.Annot.t list[@compare fun a b -> compare_annot_list a b])
+  t'
+  * (Common_adt.Annot.t list
+    [@compare fun a b -> compare_annot_list a b]
+    [@equal fun a b -> compare_annot_list a b = 0])
 [@@deriving ord, eq]
 
 let rec is_comparable_type (t, _) =
