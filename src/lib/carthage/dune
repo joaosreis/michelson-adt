@@ -3,4 +3,4 @@
  (public_name michelson-adt.carthage)
  (libraries containers zarith)
  (preprocess
-  (pps ppx_deriving.ord ppx_sexp_conv)))
+  (pps ppx_deriving.ord)))
