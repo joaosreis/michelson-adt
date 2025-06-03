@@ -2,4 +2,4 @@
  (name typing)
  (libraries containers alcotest michelson-adt.edo)
  (preprocess
-  (pps ppx_assert ppx_sexp_conv ppx_deriving.eq)))
+  (pps ppx_sexp_conv ppx_deriving.eq)))
