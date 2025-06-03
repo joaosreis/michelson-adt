@@ -1,9 +1,9 @@
-open! Core
+open! Containers
 
-module T = struct
-  type t = A_type of string | A_var of string | A_field of string
-  [@@deriving ord, sexp]
-end
+type t = A_type of string | A_var of string | A_field of string
+[@@deriving ord, eq]
 
-include T
-include Comparable.Make (T)
+let pp ppf = function
+  | A_type s -> Format.fprintf ppf ":%s" s
+  | A_var s -> Format.fprintf ppf "@%s" s
+  | A_field s -> Format.fprintf ppf "%s%s" "%" s

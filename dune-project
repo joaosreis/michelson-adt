@@ -24,11 +24,14 @@
   "An OCaml library with and ADT representation of Michelson smart contracts syntax")
  (depends
   (dune :build)
-  (core
+  (containers
    (and
-    (>= v0.14)
-    (< v0.15)))
-  bignum
+    (>= 3.0)
+    (< 4.0)))
+  (zarith
+   (and
+    (>= 1.0)
+    (< 2.0)))
   tezos-micheline
   ppx_deriving
   pp_loc

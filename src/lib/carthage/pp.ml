@@ -32,7 +32,7 @@ let rec pp_typ ppf (_, t, _) =
 
 let rec pp_data ppf (_, d) =
   match d with
-  | D_int d -> Bigint.pp ppf d
+  | D_int d -> Z.pp_print ppf d
   | D_string s -> fprintf ppf "\"%s\"" s
   | D_bytes b -> fprintf ppf "%s" (Bytes.to_string b)
   | D_elt (d_1, d_2) -> fprintf ppf "Elt %a %a" pp_data d_1 pp_data d_2
@@ -109,10 +109,10 @@ and pp_inst ppf (_, i, _) =
   | I_noop -> fprintf ppf ""
   | I_unpair -> fprintf ppf "UNPAIR"
   | I_seq i_l -> pp_print_list pp_inst ppf i_l
-  | I_drop_n n when n = Bigint.one -> fprintf ppf "DROP"
-  | I_drop_n n -> fprintf ppf "DROP %a" Bigint.pp n
-  | I_dig n -> fprintf ppf "DIG %a" Bigint.pp n
-  | I_dug n -> fprintf ppf "DUG %a" Bigint.pp n
+  | I_drop_n n when n = Z.one -> fprintf ppf "DROP"
+  | I_drop_n n -> fprintf ppf "DROP %a" Z.pp_print n
+  | I_dig n -> fprintf ppf "DIG %a" Z.pp_print n
+  | I_dug n -> fprintf ppf "DUG %a" Z.pp_print n
   | I_push (t, d) -> fprintf ppf "PUSH %a %a" pp_typ t pp_data d
   | I_none t -> fprintf ppf "NONE %a" pp_typ t
   | I_if_none (i_1, i_2) ->
@@ -137,7 +137,7 @@ and pp_inst ppf (_, i, _) =
   | I_lambda (t_1, t_2, i) ->
       fprintf ppf "LAMBDA %a %a { %a }" pp_typ t_1 pp_typ t_2 pp_inst i
   | I_dip i -> fprintf ppf "DIP { %a }" pp_inst i
-  | I_dip_n (n, i) -> fprintf ppf "DIP %a { %a }" Bigint.pp n pp_inst i
+  | I_dip_n (n, i) -> fprintf ppf "DIP %a { %a }" Z.pp_print n pp_inst i
   | I_unpack t -> fprintf ppf "UNPACK %a" pp_typ t
   | I_contract t -> fprintf ppf "CONTRACT %a" pp_typ t
   | I_create_contract p -> fprintf ppf "CREATE_CONTRACT { %a }" pp_program p

@@ -1,8 +1,8 @@
-open! Core
+open! Containers
 open Common_adt
 
-type annot = Common_adt.Annot.t [@@deriving ord, sexp]
-type 'a node = 'a Common_adt.Node.t [@@deriving ord, sexp]
+type annot = Common_adt.Annot.t [@@deriving ord, eq]
+type 'a node = 'a Common_adt.Node.t [@@deriving ord, eq]
 
 type typ_t =
   | T_unit
@@ -33,12 +33,12 @@ type typ_t =
   | T_bls12_381_g1
   | T_bls12_381_g2
   | T_bls12_381_fr
-  | T_sapling_transaction of Bigint.t
-  | T_sapling_state of Bigint.t
+  | T_sapling_transaction of Z.t
+  | T_sapling_state of Z.t
   | T_chest
   | T_chest_key
 
-and typ = (typ_t * annot list) node [@@deriving ord, sexp]
+and typ = (typ_t * annot list) node [@@deriving ord, eq]
 
 type inst_t =
   | I_noop
@@ -48,15 +48,15 @@ type inst_t =
   | I_loop of inst
   | I_loop_left of inst
   | I_dip of inst
-  | I_dip_n of Bigint.t * inst
+  | I_dip_n of Z.t * inst
   | I_exec
   | I_apply
   | I_drop
-  | I_drop_n of Bigint.t
-  | I_dup of Bigint.t
+  | I_drop_n of Z.t
+  | I_dup of Z.t
   | I_swap
-  | I_dig of Bigint.t
-  | I_dug of Bigint.t
+  | I_dig of Z.t
+  | I_dug of Z.t
   | I_push of typ * data
   | I_unit
   | I_lambda of typ * typ * inst
@@ -130,11 +130,11 @@ type inst_t =
   | I_check_signature
   | I_cast of typ
   | I_unpair
-  | I_unpair_n of Bigint.t
+  | I_unpair_n of Z.t
   | I_rename
   | I_total_voting_power
   | I_pairing_check
-  | I_sapling_empty_state of Bigint.t
+  | I_sapling_empty_state of Z.t
   | I_sapling_verify_update
   | I_ticket
   | I_read_ticket
@@ -143,16 +143,16 @@ type inst_t =
   | I_never
   | I_self_address
   | I_level
-  | I_pair_n of Bigint.t
-  | I_get_n of Bigint.t
-  | I_update_n of Bigint.t
+  | I_pair_n of Z.t
+  | I_get_n of Z.t
+  | I_update_n of Z.t
   | I_open_chest
   | I_get_and_update
 
-and inst = (inst_t * annot list) node [@@deriving ord, sexp]
+and inst = (inst_t * annot list) node [@@deriving ord, eq]
 
 and data_t =
-  | D_int of Bigint.t
+  | D_int of Z.t
   | D_string of string
   | D_bytes of Bytes.t
   | D_unit
@@ -166,34 +166,29 @@ and data_t =
   | D_list of data list
   | D_instruction of inst
 
-and data = data_t node [@@deriving ord, sexp]
-and program = { param : typ; storage : typ; code : inst } [@@deriving ord, sexp]
+and data = data_t node [@@deriving ord]
+and program = { param : typ; storage : typ; code : inst } [@@deriving ord]
 
 module Typ : sig
-  type t = typ
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
+  type t = typ [@@deriving ord, eq]
 
   val create : int -> ?location:Loc.t -> ?annots:annot list -> typ_t -> t
   val has_annot : Common_adt.Annot.t -> t -> bool
   val to_string : t -> string
+  val pp : Format.formatter -> t -> unit
 end
 
 module Data : sig
-  type t = data
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
+  type t = data [@@deriving ord, eq]
 
   val create : int -> ?location:Loc.t -> data_t -> t
+  val pp : Format.formatter -> t -> unit
 end
 
 module Inst : sig
-  type t = inst
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
+  type t = inst [@@deriving ord, eq]
 
   val create : int -> ?location:Loc.t -> ?annots:Annot.t list -> inst_t -> t
+  val pp : Format.formatter -> t -> unit
+  val pp_inst_t : Format.formatter -> inst_t -> unit
 end

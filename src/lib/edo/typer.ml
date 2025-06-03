@@ -1,4 +1,4 @@
-open! Core
+open! Containers
 open Common_adt
 open Typ
 open Typed_adt
@@ -8,9 +8,9 @@ exception Data_error of Adt.Typ.t * Adt.Data.t
 exception Failed_error of Loc.t * string
 exception Entrypoint_not_found of Loc.t * string
 
-let pop : t Stack.t -> t option = Stack.pop
-let push : t Stack.t -> t -> unit = Stack.push
-let top : t Stack.t -> t option = Stack.top
+let pop : t Stack.t -> t option = Stack.pop_opt
+let push : t Stack.t -> t -> unit = fun a b -> Stack.push b a
+let top : t Stack.t -> t option = Stack.top_opt
 let ct t = (t, [])
 
 let raise_invalid_stack_size loc inst =
@@ -24,8 +24,9 @@ let raise_invalid_tl loc inst t =
     (Type_error
        ( loc,
          inst
-         ^ List.fold_left t ~init:": unexpected types" ~f:(fun acc t ->
-               acc ^ "\n:\r" ^ to_string t) ))
+         ^ List.fold_left
+             (fun acc t -> acc ^ "\n:\r" ^ to_string t)
+             ": unexpected types" t ))
 
 let raise_body_type_mismatch loc inst =
   raise (Type_error (loc, inst ^ ": body stack type mismatch"))
@@ -89,7 +90,7 @@ let type_abs loc stack =
 
 let type_drop loc stack =
   match pop stack with
-  | Some _ -> I_drop Bigint.one
+  | Some _ -> I_drop Z.one
   | None -> raise_invalid_stack_size loc "DROP"
 
 (* SWAP *)
@@ -821,7 +822,7 @@ let type_pairing_check loc stack =
 let type_sapling_verify_update loc stack =
   match (pop stack, pop stack) with
   | Some (Sapling_transaction ms, _), Some (Sapling_state ms', _)
-    when Bigint.(ms = ms') ->
+    when Z.(equal ms ms') ->
       push stack (ct (Option (ct (Pair (ct Int, ct (Sapling_state ms))))));
       I_sapling_verify_update
   | Some t_1, Some t_2 ->
@@ -1029,13 +1030,13 @@ let type_apply loc stack =
 
 let type_drop_n loc stack n =
   let rec aux i =
-    if Bigint.(i = n) then ()
+    if Z.(equal i n) then ()
     else
       match pop stack with
-      | Some _ -> aux Bigint.(i + one)
+      | Some _ -> aux Z.(i + one)
       | None -> raise_invalid_stack_size loc "DROP"
   in
-  aux Bigint.zero;
+  aux Z.zero;
   I_drop n
 
 (* push *)
@@ -1070,13 +1071,13 @@ let type_unpair loc stack n =
   let rec aux i x =
     match pop stack with
     | Some (Pair (t_1, t_2), _) ->
-        if Bigint.(i = of_int 2) then (
+        if Z.(equal i ~$2) then (
           push stack t_2;
           push stack t_1;
-          List.iter x ~f:(fun x -> push stack x))
+          List.iter (fun x -> push stack x) x)
         else (
           push stack t_2;
-          aux Bigint.(i - one) (t_1 :: x))
+          aux Z.(i - one) (t_1 :: x))
     | Some t -> raise_invalid_t loc "UNPAIR" t
     | None -> raise_invalid_stack_size loc "UNPAIR"
   in
@@ -1089,11 +1090,11 @@ let type_dup loc stack n =
   let rec aux i x =
     match pop stack with
     | Some t ->
-        if Bigint.(i = one) then (
+        if Z.(equal i one) then (
           push stack t;
-          List.iter x ~f:(push stack);
+          List.iter (push stack) x;
           push stack t)
-        else aux Bigint.(i - one) (t :: x)
+        else aux Z.(i - one) (t :: x)
     | None -> raise_invalid_stack_size loc "DUP"
   in
   aux n [];
@@ -1105,10 +1106,10 @@ let type_dig loc stack n =
   let rec aux i x =
     match pop stack with
     | Some t ->
-        if Bigint.(i = zero) then (
-          List.iter x ~f:(fun x -> push stack x);
+        if Z.(equal i zero) then (
+          List.iter (fun x -> push stack x) x;
           push stack t)
-        else aux Bigint.(i - one) (t :: x)
+        else aux Z.(i - one) (t :: x)
     | None -> raise_invalid_stack_size loc "DIG"
   in
   aux n [];
@@ -1117,18 +1118,18 @@ let type_dig loc stack n =
 (* DUG n *)
 
 let type_dug loc stack n =
-  (if Bigint.(n = zero) then ()
+  (if Z.(equal n zero) then ()
    else
      match pop stack with
      | Some top ->
          let rec aux i x =
            match pop stack with
            | Some a ->
-               if Bigint.(i = one) then (
+               if Z.(equal i one) then (
                  push stack top;
                  push stack a;
-                 List.iter x ~f:(fun x -> push stack x))
-               else aux Bigint.(i - one) (a :: x)
+                 List.iter (fun x -> push stack x) x)
+               else aux Z.(i - one) (a :: x)
            | None -> raise_invalid_stack_size loc "DUG"
          in
          aux n []
@@ -1139,18 +1140,16 @@ let type_dug loc stack n =
 
 let type_pair_n loc stack n =
   let rec aux i l =
-    if Bigint.(i = of_int 2) then
+    if Z.(equal i ~$2) then
       match (pop stack, pop stack) with
       | Some t_1, Some t_2 ->
           let x = ct (Pair (t_1, t_2)) in
-          let x =
-            List.fold_left l ~init:x ~f:(fun acc x -> ct (Pair (x, acc)))
-          in
+          let x = List.fold_left (fun acc x -> ct (Pair (x, acc))) x l in
           push stack x
       | None, _ | _, None -> raise_invalid_stack_size loc "PAIR"
     else
       match pop stack with
-      | Some x -> aux Bigint.(i - one) (x :: l)
+      | Some x -> aux Z.(i - one) (x :: l)
       | None -> raise_invalid_stack_size loc "PAIR"
   in
   aux n [];
@@ -1160,8 +1159,8 @@ let type_pair_n loc stack n =
 
 let type_get_n loc stack n =
   let rec aux i =
-    if Bigint.(i = zero) then ()
-    else if Bigint.(i = one) then
+    if Z.(equal i zero) then ()
+    else if Z.(equal i one) then
       match pop stack with
       | Some (Pair (a, _), _) -> push stack a
       | Some t -> raise_invalid_t loc "GET" t
@@ -1170,7 +1169,7 @@ let type_get_n loc stack n =
       match pop stack with
       | Some (Pair (_, y), _) ->
           push stack y;
-          aux Bigint.(i - one - one)
+          aux Z.(i - one - one)
       | Some t -> raise_invalid_t loc "GET" t
       | None -> raise_invalid_stack_size loc "GET"
   in
@@ -1183,8 +1182,8 @@ let type_update_n loc stack n =
   match pop stack with
   | Some a -> (
       let rec aux i f x =
-        if Bigint.(i = zero) then f a
-        else if Bigint.(i = one) then
+        if Z.(equal i zero) then f a
+        else if Z.(equal i one) then
           match x with
           | Pair (_, b), _ -> f (ct (Pair (a, b)))
           | t -> raise_invalid_t loc "UPDATE" t
@@ -1192,7 +1191,7 @@ let type_update_n loc stack n =
           match x with
           | Pair (a, b), _ ->
               let f x = f (ct (Pair (a, x))) in
-              aux Bigint.(i - one - one) f b
+              aux Z.(i - one - one) f b
           | t -> raise_invalid_t loc "UPDATE" t
       in
       match pop stack with
@@ -1233,11 +1232,11 @@ let rec type_data t d =
         let a = type_data (Typ.create 0 T_address) a in
         D_pair (a, d)
     | T_list t', D_list d_l ->
-        let d = List.rev_map d_l ~f:(type_data t') in
-        D_list (List.rev d)
+        let d = List.map (type_data t') d_l in
+        D_list d
     | T_set t', D_list d_l ->
-        let d = List.rev_map d_l ~f:(type_data t') in
-        D_list (List.rev d)
+        let d = List.map (type_data t') d_l in
+        D_list d
     | T_map (t_k, t_v), D_list d_l ->
         let type_elt t_k t_v d =
           match d.Node.value with
@@ -1247,8 +1246,8 @@ let rec type_data t d =
               (d_k, d_v)
           | _ -> raise_invalid_data ()
         in
-        let d_l = List.rev_map d_l ~f:(type_elt t_k t_v) in
-        D_map (List.rev d_l)
+        let d_l = List.map (type_elt t_k t_v) d_l in
+        D_map d_l
     | T_or (t', _), D_left d ->
         let d = type_data t' d in
         D_left d
@@ -1277,12 +1276,12 @@ and type_if loc p stack i_t i_f =
       let copy_stack () =
         if not failed_t then (
           Stack.clear stack;
-          let l = Stack.fold s_t ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_t in
+          List.iter (push stack) l)
         else if not failed_f then (
           Stack.clear stack;
-          let l = Stack.fold s_f ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_f in
+          List.iter (push stack) l)
       in
       let failed = failed_t && failed_f in
       let i = (failed, I_if (i_t, i_f)) in
@@ -1291,10 +1290,10 @@ and type_if loc p stack i_t i_f =
         copy_stack ();
         i)
       else
-        let l_s_t = Stack.to_list s_t in
-        let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
-        | List.Or_unequal_lengths.Ok b when b ->
+        let l_s_t = Seq.to_list @@ Stack.to_seq s_t in
+        let l_s_f = Seq.to_list @@ Stack.to_seq s_f in
+        match Utils.for_all2_opt are_compatible l_s_t l_s_f with
+        | Some b when b ->
             copy_stack ();
             i
         | _ -> raise_body_type_mismatch loc "IF")
@@ -1312,12 +1311,12 @@ and type_if_none loc p stack i_t i_f =
       let copy_stack () =
         if not failed_t then (
           Stack.clear stack;
-          let l = Stack.fold s_t ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_t in
+          List.iter (push stack) l)
         else if not failed_f then (
           Stack.clear stack;
-          let l = Stack.fold s_f ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_f in
+          List.iter (push stack) l)
       in
       let failed = failed_t && failed_f in
       let i = (failed, I_if_none (i_t, i_f)) in
@@ -1326,10 +1325,10 @@ and type_if_none loc p stack i_t i_f =
         copy_stack ();
         i)
       else
-        let l_s_t = Stack.to_list s_t in
-        let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
-        | List.Or_unequal_lengths.Ok b when b ->
+        let l_s_t = Seq.to_list @@ Stack.to_seq s_t in
+        let l_s_f = Seq.to_list @@ Stack.to_seq s_f in
+        match Utils.for_all2_opt are_compatible l_s_t l_s_f with
+        | Some b when b ->
             copy_stack ();
             i
         | _ -> raise_body_type_mismatch loc "IF_NONE")
@@ -1348,12 +1347,12 @@ and type_if_left loc p stack i_t i_f =
       let copy_stack () =
         if not failed_t then (
           Stack.clear stack;
-          let l = Stack.fold s_t ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_t in
+          List.iter (push stack) l)
         else if not failed_f then (
           Stack.clear stack;
-          let l = Stack.fold s_f ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_f in
+          List.iter (push stack) l)
       in
       let failed = failed_t && failed_f in
       let i = (failed, I_if_left (i_t, i_f)) in
@@ -1362,10 +1361,10 @@ and type_if_left loc p stack i_t i_f =
         copy_stack ();
         i)
       else
-        let l_s_t = Stack.to_list s_t in
-        let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
-        | List.Or_unequal_lengths.Ok b when b ->
+        let l_s_t = Seq.to_list @@ Stack.to_seq s_t in
+        let l_s_f = Seq.to_list @@ Stack.to_seq s_f in
+        match Utils.for_all2_opt are_compatible l_s_t l_s_f with
+        | Some b when b ->
             copy_stack ();
             i
         | _ -> raise_body_type_mismatch loc "IF_LEFT")
@@ -1384,12 +1383,12 @@ and type_if_cons loc p stack i_t i_f =
       let copy_stack () =
         if not failed_t then (
           Stack.clear stack;
-          let l = Stack.fold s_t ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_t in
+          List.iter (push stack) l)
         else if not failed_f then (
           Stack.clear stack;
-          let l = Stack.fold s_f ~init:[] ~f:(fun acc t -> t :: acc) in
-          List.iter l ~f:(push stack))
+          let l = Stack.fold (fun acc t -> t :: acc) [] s_f in
+          List.iter (push stack) l)
       in
       let failed = failed_t && failed_f in
       let i = (failed, I_if_cons (i_t, i_f)) in
@@ -1398,10 +1397,10 @@ and type_if_cons loc p stack i_t i_f =
         copy_stack ();
         i)
       else
-        let l_s_t = Stack.to_list s_t in
-        let l_s_f = Stack.to_list s_f in
-        match List.for_all2 l_s_t l_s_f ~f:are_compatible with
-        | List.Or_unequal_lengths.Ok b when b ->
+        let l_s_t = Seq.to_list @@ Stack.to_seq s_t in
+        let l_s_f = Seq.to_list @@ Stack.to_seq s_f in
+        match Utils.for_all2_opt are_compatible l_s_t l_s_f with
+        | Some b when b ->
             copy_stack ();
             i
         | _ -> raise_body_type_mismatch loc "IF_CONS")
@@ -1418,10 +1417,10 @@ and type_loop loc p stack b =
       else
         match pop s with
         | Some (Bool, _) -> (
-            let l_stack = Stack.to_list stack in
-            let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:are_compatible with
-            | List.Or_unequal_lengths.Ok c when c -> i
+            let l_stack = Seq.to_list @@ Stack.to_seq stack in
+            let l_s = Seq.to_list @@ Stack.to_seq s in
+            match Utils.for_all2_opt are_compatible l_stack l_s with
+            | Some c when c -> i
             | _ -> raise_body_type_mismatch loc "LOOP")
         | Some t -> raise_invalid_t loc "LOOP" t
         | None -> raise_invalid_stack_size loc "LOOP")
@@ -1440,10 +1439,10 @@ and type_loop_left loc p stack b =
         match pop s with
         | Some (Or (l', r'), _) when are_compatible l l' && are_compatible r r'
           -> (
-            let l_stack = Stack.to_list stack in
-            let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:are_compatible with
-            | List.Or_unequal_lengths.Ok c when c ->
+            let l_stack = Seq.to_list @@ Stack.to_seq stack in
+            let l_s = Seq.to_list @@ Stack.to_seq s in
+            match Utils.for_all2_opt are_compatible l_stack l_s with
+            | Some c when c ->
                 push stack r;
                 i
             | _ -> raise_body_type_mismatch loc "LOOP_LEFT")
@@ -1461,10 +1460,10 @@ and type_iter loc p stack b =
       let i = (failed, I_iter_set b) in
       if failed then i
       else
-        let l_stack = Stack.to_list stack in
-        let l_s = Stack.to_list s in
-        match List.for_all2 l_stack l_s ~f:are_compatible with
-        | List.Or_unequal_lengths.Ok c when c -> i
+        let l_stack = Seq.to_list @@ Stack.to_seq stack in
+        let l_s = Seq.to_list @@ Stack.to_seq s in
+        match Utils.for_all2_opt are_compatible l_stack l_s with
+        | Some c when c -> i
         | _ -> raise_body_type_mismatch loc "ITER")
   | Some (Map (k, v), _) -> (
       let s = Stack.copy stack in
@@ -1473,10 +1472,10 @@ and type_iter loc p stack b =
       let i = (failed, I_iter_map b) in
       if failed then i
       else
-        let l_stack = Stack.to_list stack in
-        let l_s = Stack.to_list s in
-        match List.for_all2 l_stack l_s ~f:are_compatible with
-        | List.Or_unequal_lengths.Ok c when c -> i
+        let l_stack = Seq.to_list @@ Stack.to_seq stack in
+        let l_s = Seq.to_list @@ Stack.to_seq s in
+        match Utils.for_all2_opt are_compatible l_stack l_s with
+        | Some c when c -> i
         | _ -> raise_body_type_mismatch loc "ITER")
   | Some (List t, _) -> (
       let s = Stack.copy stack in
@@ -1485,10 +1484,10 @@ and type_iter loc p stack b =
       let i = (failed, I_iter_list b) in
       if failed then i
       else
-        let l_stack = Stack.to_list stack in
-        let l_s = Stack.to_list s in
-        match List.for_all2 l_stack l_s ~f:are_compatible with
-        | List.Or_unequal_lengths.Ok c when c -> i
+        let l_stack = Seq.to_list @@ Stack.to_seq stack in
+        let l_s = Seq.to_list @@ Stack.to_seq s in
+        match Utils.for_all2_opt are_compatible l_stack l_s with
+        | Some c when c -> i
         | _ -> raise_body_type_mismatch loc "ITER")
   | Some t -> raise_invalid_t loc "ITER" t
   | None -> raise_invalid_stack_size loc "ITER"
@@ -1504,10 +1503,10 @@ and type_map loc p stack b =
         let i = (false, I_map_list b) in
         match pop s with
         | Some t -> (
-            let l_stack = Stack.to_list stack in
-            let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:are_compatible with
-            | List.Or_unequal_lengths.Ok c when c ->
+            let l_stack = Seq.to_list @@ Stack.to_seq stack in
+            let l_s = Seq.to_list @@ Stack.to_seq s in
+            match Utils.for_all2_opt are_compatible l_stack l_s with
+            | Some c when c ->
                 push stack (ct (List t));
                 i
             | _ -> raise_body_type_mismatch loc "MAP")
@@ -1521,10 +1520,10 @@ and type_map loc p stack b =
         let i = (false, I_map_map b) in
         match pop s with
         | Some t -> (
-            let l_stack = Stack.to_list stack in
-            let l_s = Stack.to_list s in
-            match List.for_all2 l_stack l_s ~f:are_compatible with
-            | List.Or_unequal_lengths.Ok c when c ->
+            let l_stack = Seq.to_list @@ Stack.to_seq stack in
+            let l_s = Seq.to_list @@ Stack.to_seq s in
+            match Utils.for_all2_opt are_compatible l_stack l_s with
+            | Some c when c ->
                 push stack (ct (Map (k, t)));
                 i
             | _ -> raise_body_type_mismatch loc "MAP")
@@ -1559,20 +1558,21 @@ and type_dip loc p stack i =
   | None -> raise_invalid_stack_size loc "DIP"
 
 and type_dip_n loc p stack n i =
-  if Bigint.(of_int (Stack.length stack) < n) then
-    raise (Invalid_argument "DIP n")
+  if Z.(lt ~$(Stack.length stack) n) then raise (Invalid_argument "DIP n")
   else
-    let l =
-      List.init (Bigint.to_int_exn n) ~f:(fun _ ->
-          match pop stack with
-          | Some x -> x
-          | None -> raise_invalid_stack_size loc "DIP n")
+    let rec aux acc i =
+      if Z.(equal i zero) then acc
+      else
+        match pop stack with
+        | Some x -> aux (x :: acc) Z.(i - one)
+        | None -> raise_invalid_stack_size loc "DIP n"
     in
+    let l = aux [] n in
     let failed, i = type_inst p stack i in
     if failed then raise_failed_body loc "DIP n"
     else
       let i = (false, I_dip_n (n, i)) in
-      List.iter l ~f:(push stack);
+      List.iter (push stack) l;
       i
 
 and type_seq p stack i_l =
@@ -1582,13 +1582,14 @@ and type_seq p stack i_l =
   | x :: xs ->
       let failed, x = type_inst x in
       let failed, seq =
-        List.fold_left xs ~init:(failed, [ x ]) ~f:(fun (failed, acc) ->
-          function
-          | i ->
-              if failed then raise_failed_body i.location "MAP"
-              else
-                let failed, i = type_inst i in
-                (failed, i :: acc))
+        List.fold_left
+          (fun (failed, acc) -> function
+            | i ->
+                if failed then raise_failed_body i.Node.location "MAP"
+                else
+                  let failed, i = type_inst i in
+                  (failed, i :: acc))
+          (failed, [ x ]) xs
       in
       (failed, I_seq (List.rev seq))
 
@@ -1650,9 +1651,9 @@ and type_inst p stack { id; location = loc; value = i, annots } =
     | I_self ->
         ( false,
           type_self loc stack p
-            (List.find_map annots ~f:(function
-              | Annot.A_field a -> Some a
-              | _ -> None)) )
+            (List.find_map
+               (function Annot.A_field a -> Some a | _ -> None)
+               annots) )
     | I_amount -> (false, type_amount loc stack)
     | I_implicit_account -> (false, type_implicit_account loc stack)
     | I_voting_power -> (false, type_voting_power loc stack)
@@ -1666,7 +1667,7 @@ and type_inst p stack { id; location = loc; value = i, annots } =
     | I_sha256 -> (false, type_sha256 loc stack)
     | I_sha512 -> (false, type_sha512 loc stack)
     | I_check_signature -> (false, type_check_signature loc stack)
-    | I_unpair -> (false, type_unpair loc stack Bigint.(one + one))
+    | I_unpair -> (false, type_unpair loc stack Z.(one + one))
     | I_total_voting_power -> (false, type_total_voting_power loc stack)
     | I_pairing_check -> (false, type_pairing_check loc stack)
     | I_sapling_verify_update -> (false, type_sapling_verify_update loc stack)

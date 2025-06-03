@@ -1,6 +1,6 @@
-open! Core
+open! Containers
 
 type t = A_type of string | A_var of string | A_field of string
+[@@deriving ord, eq]
 
-include Comparable.S with type t := t
-include Sexpable.S with type t := t
+val pp : Format.formatter -> t -> unit

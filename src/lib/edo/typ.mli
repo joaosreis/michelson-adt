@@ -1,4 +1,4 @@
-open! Core
+open! Containers
 
 type t' =
   | Unit
@@ -29,15 +29,12 @@ type t' =
   | Bls12_381_g1
   | Bls12_381_g2
   | Bls12_381_fr
-  | Sapling_transaction of Bigint.t
-  | Sapling_state of Bigint.t
+  | Sapling_transaction of Z.t
+  | Sapling_state of Z.t
   | Chest
   | Chest_key
 
-and t = t' * Common_adt.Annot.t list
-
-include Sexpable.S with type t := t
-include Comparable.S with type t := t
+and t = t' * Common_adt.Annot.t list [@@deriving ord]
 
 val is_comparable_type : t -> bool
 val is_packable : t -> bool
@@ -46,3 +43,4 @@ val t'_to_string : t' -> string
 val to_string : t -> string
 val has_annot : Common_adt.Annot.t -> t -> bool
 val are_compatible : t -> t -> bool
+val pp : Format.formatter -> t -> unit

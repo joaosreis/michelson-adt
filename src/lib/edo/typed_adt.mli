@@ -1,14 +1,14 @@
-open! Core
+open! Containers
 open Common_adt
 
 type annot = Common_adt.Annot.t
 type 'a node = 'a Adt.node
-type typ_t = Adt.typ_t [@@deriving ord, sexp]
+type typ_t = Adt.typ_t [@@deriving ord]
 type typ = Adt.typ
 
 type data_t =
-  | D_int of Bigint.t
-  | D_nat of Bigint.t
+  | D_int of Z.t
+  | D_nat of Z.t
   | D_string of string
   | D_bytes of Bytes.t
   | D_unit
@@ -54,12 +54,12 @@ and inst_t =
   | I_cons
   | I_contract of typ
   | I_create_contract of program
-  | I_dig of Bigint.t
+  | I_dig of Z.t
   | I_dip of inst
-  | I_dip_n of Bigint.t * inst
-  | I_drop of Bigint.t
-  | I_dug of Bigint.t
-  | I_dup of Bigint.t
+  | I_dip_n of Z.t * inst
+  | I_drop of Z.t
+  | I_dug of Z.t
+  | I_dup of Z.t
   | I_ediv_nat
   | I_ediv_nat_int
   | I_ediv_int
@@ -74,7 +74,7 @@ and inst_t =
   | I_ge
   | I_get_map
   | I_get_big_map
-  | I_get_n of Bigint.t
+  | I_get_n of Z.t
   | I_get_and_update_map
   | I_get_and_update_big_map
   | I_gt
@@ -132,12 +132,12 @@ and inst_t =
   | I_or_nat
   | I_pack
   | I_pair
-  | I_pair_n of Bigint.t
+  | I_pair_n of Z.t
   | I_pairing_check
   | I_push of data
   | I_read_ticket
   | I_right of typ
-  | I_sapling_empty_state of Bigint.t
+  | I_sapling_empty_state of Z.t
   | I_sapling_verify_update
   | I_self
   | I_self_address
@@ -168,11 +168,11 @@ and inst_t =
   | I_transfer_tokens
   | I_unit
   | I_unpack of typ
-  | I_unpair of Bigint.t
+  | I_unpair of Z.t
   | I_update_set
   | I_update_map
   | I_update_big_map
-  | I_update_n of Bigint.t
+  | I_update_n of Z.t
   | I_voting_power
   | I_xor_bool
   | I_xor_nat
@@ -181,7 +181,7 @@ and inst_t =
   | I_open_chest
   | I_cast of typ
   | I_create_account
-[@@deriving sexp, ord]
+[@@deriving ord]
 
 and inst = (inst_t * annot list) node
 and seq = Seq_i of inst | Seq_s of inst * seq
@@ -190,19 +190,16 @@ and program = { param : typ; storage : typ; code : inst }
 module Typ : module type of Adt.Typ
 
 module Data : sig
-  type t = data
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
+  type t = data [@@deriving ord]
 
   val create : int -> ?location:Loc.t -> Typ.t -> data_t -> t
+  val pp : Format.formatter -> t -> unit
 end
 
 module Inst : sig
-  type t = inst
-
-  include Comparable.S with type t := t
-  include Sexpable.S with type t := t
+  type t = inst [@@deriving ord, eq]
 
   val create : int -> ?location:Loc.t -> ?annots:annot list -> inst_t -> t
+  val pp : Format.formatter -> t -> unit
+  val pp_inst_t : Format.formatter -> inst_t -> unit
 end

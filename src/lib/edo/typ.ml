@@ -1,58 +1,53 @@
-open! Core
+open! Containers
 
-module T = struct
-  let compare_annot_list a b =
-    let f = function Common_adt.Annot.A_type _ -> true | _ -> false in
-    if List.is_empty a && List.is_empty b then 0
-    else if List.is_empty a && not (List.exists b ~f) then 0
-    else if (not (List.exists a ~f)) && List.is_empty b then 0
-    else
-      let f = function Common_adt.Annot.A_type a -> Some a | _ -> None in
-      match (List.find_map a ~f, List.find_map b ~f) with
-      | None, None | None, Some _ | Some _, None -> 0
-      | Some a, Some b -> String.compare a b
+let compare_annot_list a b =
+  let f = function Common_adt.Annot.A_type _ -> true | _ -> false in
+  if List.is_empty a && List.is_empty b then 0
+  else if List.is_empty a && not (List.exists f b) then 0
+  else if (not (List.exists f a)) && List.is_empty b then 0
+  else
+    let f = function Common_adt.Annot.A_type a -> Some a | _ -> None in
+    match (List.find_map f a, List.find_map f b) with
+    | None, None | None, Some _ | Some _, None -> 0
+    | Some a, Some b -> String.compare a b
 
-  type t' =
-    | Unit
-    | Never
-    | Bool
-    | Int
-    | Nat
-    | String
-    | Chain_id
-    | Bytes
-    | Mutez
-    | Key_hash
-    | Key
-    | Signature
-    | Timestamp
-    | Address
-    | Option of t
-    | List of t
-    | Set of t
-    | Operation
-    | Contract of t
-    | Ticket of t
-    | Pair of t * t
-    | Or of t * t
-    | Lambda of t * t
-    | Map of t * t
-    | Big_map of t * t
-    | Bls12_381_g1
-    | Bls12_381_g2
-    | Bls12_381_fr
-    | Sapling_transaction of Bigint.t
-    | Sapling_state of Bigint.t
-    | Chest
-    | Chest_key
+type t' =
+  | Unit
+  | Never
+  | Bool
+  | Int
+  | Nat
+  | String
+  | Chain_id
+  | Bytes
+  | Mutez
+  | Key_hash
+  | Key
+  | Signature
+  | Timestamp
+  | Address
+  | Option of t
+  | List of t
+  | Set of t
+  | Operation
+  | Contract of t
+  | Ticket of t
+  | Pair of t * t
+  | Or of t * t
+  | Lambda of t * t
+  | Map of t * t
+  | Big_map of t * t
+  | Bls12_381_g1
+  | Bls12_381_g2
+  | Bls12_381_fr
+  | Sapling_transaction of Z.t
+  | Sapling_state of Z.t
+  | Chest
+  | Chest_key
 
-  and t =
-    t' * (Common_adt.Annot.t list[@compare fun a b -> compare_annot_list a b])
-  [@@deriving ord, sexp]
-end
-
-include T
-include Comparable.Make (T)
+and t =
+  t' * (Common_adt.Annot.t list[@compare fun a b -> compare_annot_list a b])
+[@@deriving ord, eq]
 
 let rec is_comparable_type (t, _) =
   match t with
@@ -79,7 +74,7 @@ let rec is_packable (t, _) =
 
 let rec is_contract_type_compatible contract_t t =
   match (fst contract_t, fst t) with
-  | _ when contract_t = t -> true
+  | _ when equal contract_t t -> true
   | Pair (contract_1, contract_2), Pair (t_1, t_2) ->
       is_contract_type_compatible contract_1 t_1
       && is_contract_type_compatible contract_2 t_2
@@ -89,7 +84,9 @@ let rec is_contract_type_compatible contract_t t =
       is_contract_type_compatible c t || is_contract_type_compatible t c
   | _ -> false
 
-let rec t'_to_string = function
+let rec t'_to_string =
+  let open Printf in
+  function
   | Int -> "int"
   | Nat -> "nat"
   | String -> "string"
@@ -120,20 +117,17 @@ let rec t'_to_string = function
   | Bls12_381_g2 -> "bls12_381_g2"
   | Bls12_381_fr -> "bls12_381_fr"
   | Ticket t -> sprintf "ticket %s" (to_string t)
-  | Sapling_transaction n ->
-      sprintf "sapling_transaction %s" (Bigint.to_string n)
-  | Sapling_state n -> sprintf "sapling_state %s" (Bigint.to_string n)
+  | Sapling_transaction n -> sprintf "sapling_transaction %s" (Z.to_string n)
+  | Sapling_state n -> sprintf "sapling_state %s" (Z.to_string n)
   | Chest -> "chest"
   | Chest_key -> "chest_key"
 
 and to_string (t, _) = t'_to_string t
 
-let has_annot a t = List.mem (snd t) a ~equal:Common_adt.Annot.equal
+let has_annot a t = List.mem a (snd t) ~eq:Common_adt.Annot.equal
 
 let get_type_annot a =
-  List.find_map a ~f:(function
-    | Common_adt.Annot.A_type a -> Some a
-    | _ -> None)
+  List.find_map (function Common_adt.Annot.A_type a -> Some a | _ -> None) a
 
 let rec are_compatible (t_1, a_1) (t_2, a_2) =
   match (get_type_annot a_1, get_type_annot a_2) with
@@ -173,8 +167,52 @@ let rec are_compatible (t_1, a_1) (t_2, a_2) =
       | Bls12_381_g2, Bls12_381_g2 -> true
       | Bls12_381_fr, Bls12_381_fr -> true
       | Ticket t_1, Ticket t_2 -> are_compatible t_1 t_2
-      | Sapling_transaction n_1, Sapling_transaction n_2 -> Bigint.equal n_1 n_2
-      | Sapling_state n_1, Sapling_state n_2 -> Bigint.equal n_1 n_2
+      | Sapling_transaction n_1, Sapling_transaction n_2 -> Z.equal n_1 n_2
+      | Sapling_state n_1, Sapling_state n_2 -> Z.equal n_1 n_2
       | Chest, Chest -> true
       | Chest_key, Chest_key -> true
       | _ -> false)
+
+let rec pp_t' ppf =
+  let open Format in
+  function
+  | Int -> fprintf ppf "int"
+  | Nat -> fprintf ppf "nat"
+  | String -> fprintf ppf "string"
+  | Bytes -> fprintf ppf "bytes"
+  | Mutez -> fprintf ppf "mutez"
+  | Bool -> fprintf ppf "bool"
+  | Key_hash -> fprintf ppf "key_hash"
+  | Timestamp -> fprintf ppf "timestamp"
+  | Address -> fprintf ppf "address"
+  | Key -> fprintf ppf "key"
+  | Unit -> fprintf ppf "unit"
+  | Signature -> fprintf ppf "signature"
+  | Option t -> fprintf ppf "(option %a)" pp t
+  | List t -> fprintf ppf "(list %a)" pp t
+  | Set t -> fprintf ppf "(set %a)" pp t
+  | Operation -> fprintf ppf "%s" "operation"
+  | Contract t -> fprintf ppf "(contract %a)" pp t
+  | Pair (t_1, t_2) -> fprintf ppf "(pair %a %a)" pp t_1 pp t_2
+  | Or (t_1, t_2) -> fprintf ppf "(or %a %a)" pp t_1 pp t_2
+  | Lambda (t_1, t_2) -> fprintf ppf "(lambda %a %a)" pp t_1 pp t_2
+  | Map (t_1, t_2) -> fprintf ppf "(map %a %a)" pp t_1 pp t_2
+  | Big_map (t_1, t_2) -> fprintf ppf "(big_map %a %a)" pp t_1 pp t_2
+  | Chain_id -> fprintf ppf "chain_id"
+  | Never -> fprintf ppf "never"
+  | Bls12_381_g1 -> fprintf ppf "bls12_381_g1"
+  | Bls12_381_g2 -> fprintf ppf "bls12_381_g2"
+  | Bls12_381_fr -> fprintf ppf "bls12_381_fr"
+  | Ticket t -> fprintf ppf "ticket %a" pp t
+  | Sapling_transaction n -> fprintf ppf "sapling_transaction %a" Z.pp_print n
+  | Sapling_state n -> fprintf ppf "sapling_state %a" Z.pp_print n
+  | Chest -> fprintf ppf "chest"
+  | Chest_key -> fprintf ppf "chest_key"
+
+and pp ppf (t, a) =
+  let open Format in
+  let pp_print_list f ppf =
+    fprintf ppf "{ %a }"
+      (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";") f)
+  in
+  fprintf ppf "%a %a" pp_t' t (pp_print_list Common_adt.Annot.pp) a
