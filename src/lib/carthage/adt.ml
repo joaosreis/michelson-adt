@@ -1,4 +1,4 @@
-open Base
+open! Containers
 
 type ('l, 'a) typ_t =
   | T_key
