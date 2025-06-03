@@ -61,6 +61,8 @@
           inputsFrom = [ main ];
           buildInputs = devPackages ++ [
             # You can add packages from nixpkgs here
+            pkgs.nixd
+            pkgs.nixfmt
           ];
         };
       });
