@@ -1,6 +1,6 @@
 (library
  (name carthage_adt)
  (public_name michelson-adt.carthage)
- (libraries tezos-micheline containers zarith)
+ (libraries containers zarith)
  (preprocess
   (pps ppx_deriving.ord ppx_sexp_conv)))

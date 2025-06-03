@@ -1,6 +1,6 @@
 (library
  (name common_adt)
  (public_name michelson-adt.common)
- (libraries tezos-micheline containers containers.pp zarith pp_loc)
+ (libraries containers containers.pp zarith pp_loc)
  (preprocess
   (pps ppx_deriving.ord ppx_deriving.eq ppx_sexp_conv)))

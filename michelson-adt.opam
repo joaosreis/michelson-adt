@@ -12,7 +12,6 @@ depends: [
   "dune" {>= "2.7" & build}
   "containers" {>= "3.0" & < "4.0"}
   "zarith" {>= "1.0" & < "2.0"}
-  "tezos-micheline"
   "ppx_deriving"
   "pp_loc"
   "alcotest" {with-test}

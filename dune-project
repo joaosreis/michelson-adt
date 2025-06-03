@@ -32,7 +32,6 @@
    (and
     (>= 1.0)
     (< 2.0)))
-  tezos-micheline
   ppx_deriving
   pp_loc
   (alcotest :with-test)))
